@@ -11,5 +11,6 @@ dependencies = [
     "jupyterlab>=4.4.5",
     "langchain-gigachat>=0.3.12",
     "marimo>=0.14.15",
+    "openinference-instrumentation-langchain>=0.1.50",
     "rich>=14.1.0",
 ]
