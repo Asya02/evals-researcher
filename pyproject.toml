@@ -11,6 +11,13 @@ dependencies = [
     "jupyterlab>=4.4.5",
     "langchain-gigachat>=0.3.12",
     "marimo>=0.14.15",
+    "molabel>=0.1.5",
     "openinference-instrumentation-langchain>=0.1.50",
     "rich>=14.1.0",
 ]
+
+[tool.marimo.runtime]
+output_max_bytes = 30_000_000
+
+[tool.uv.sources]
+molabel = { git = "https://github.com/Asya02/molabel.git" }
