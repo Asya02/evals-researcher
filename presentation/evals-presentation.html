@@ -200,9 +200,55 @@
 </section>
 <section class="slide level2">
 
-<p><a href="https://example.com" data-preview-link="true">Preview</a></p>
+<!-- [Preview](https://example.com){preview-link="true"} -->
+<h3 id="дисклеймеры">Дисклеймеры</h3>
+<ul>
+<li>Оценка LLM ≠ Оценка приложений с LLM</li>
+<li>Эксперименты, а не функции <img data-src="evals-presentation_files/figure-revealjs/eb9ec873-6770-436e-a1de-430fb05925f3-2-image-3.png"></li>
+</ul>
+</section>
+<section id="появляющиеся-проблемы" class="slide level2">
+<h2>Появляющиеся проблемы</h2>
+<div>
+
+</div>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<ul>
+<li>устраняем одну проблему, появляются другие</li>
+<li>огромные промпты</li>
+<li>не видно, как работает система за пределами известных кейсов</li>
+</ul>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-right">
+<figure>
+<p><img data-src="evals-presentation_files/figure-revealjs/eb9ec873-6770-436e-a1de-430fb05925f3-1-image-2.png" class="quarto-figure quarto-figure-right"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="основная-идея---быстро-итерироваться" class="slide level2">
+<h2>Основная идея - быстро итерироваться</h2>
+<ul>
+<li>нормальная система оценивающая нашу систему</li>
+<li>нормальное логирование поведения системы</li>
+<li>изменения поведения системы</li>
+</ul>
+</section>
+<section id="типы-оценок" class="slide level2">
+<h2>Типы оценок</h2>
+<ul>
+<li>Уровень 1: Модульные тесты</li>
+<li>Уровень 2: Оценка моделью и человеком (включая отладку)</li>
+<li>Уровень 3: A/B-тестирование</li>
+</ul>
 <aside class="notes">
-<p>Speaker notes go here.</p>
+<p>Чем мне нравится сегодняшняя тема, что она с высокой вероятностью останется актуальной, ну, минимум на ближайшие лет 10. Это не какие-нибудь трюки с промптами, которые с появлением новых моделей станут неактуальными, а важный навык, который в любом случае будет полезен, поскольку даже при самых крутых моделях нужно понимать, почему что-то в приложении работает некорректно. Давайте я сейчас посвящу какое-то время тому, чтобы объяснить, зачем вообще этот весь evaluation нужен, а затем расскажу, как мы, опираясь в том числе на Хамэла Хусейна, рекомендуем его проводить. Мне кажется, это будет полезный воркшоп, потому что я покажу шаг за шагом, как я на реальном примере отлаживала сложную LLM систему. Я это готовила достаточно долго, пробовала по-разному и сейчас будет именно то, что работает на практике и тот пайплайн, который можно переиспользовать для практически любых проектов с LLM.</p>
+<p>Сначала несколько дисклеймеров. 1. оценка llm != оценка приложений с llm</p>
 <style type="text/css">
         span.MJX_Assistive_MathML {
           position:absolute!important;
@@ -217,6 +263,10 @@
 </section>
 <section class="slide level2">
 
+<p>GPT Researcher <img data-src="evals-presentation_files/figure-revealjs/eb9ec873-6770-436e-a1de-430fb05925f3-4-image.png" style="width:75.0%"></p>
+</section>
+<section id="логирование" class="slide level2">
+<h2>Логирование</h2>
 <div class="sourceCode" id="cb1" data-code-line-numbers="|7,8|15|16|17"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href=""></a><span class="im">import</span> logging</span>
 <span id="cb1-2"><a href=""></a><span class="im">import</span> os</span>
 <span id="cb1-3"><a href=""></a><span class="im">import</span> sys</span>
@@ -257,6 +307,160 @@
 <span id="cb1-38"><a href=""></a></span>
 <span id="cb1-39"><a href=""></a>    root_logger.addHandler(console_handler)</span>
 <span id="cb1-40"><a href=""></a>    root_logger.addHandler(file_handler)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section class="slide level2">
+
+<h4 id="в-файле-проекта-research.py">В файле проекта <code>research.py</code></h4>
+<div class="sourceCode" id="cb2" data-code-line-numbers="|1|13,14"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href=""></a>logger <span class="op">=</span> logging.getLogger(<span class="va">__name__</span>)</span>
+<span id="cb2-2"><a href=""></a>...</span>
+<span id="cb2-3"><a href=""></a><span class="cf">try</span>:</span>
+<span id="cb2-4"><a href=""></a>            report <span class="op">=</span> <span class="cf">await</span> <span class="va">self</span>.research(</span>
+<span id="cb2-5"><a href=""></a>                parent_query<span class="op">=</span>parent_query,</span>
+<span id="cb2-6"><a href=""></a>                query<span class="op">=</span>subtopic,</span>
+<span id="cb2-7"><a href=""></a>                research_report<span class="op">=</span><span class="st">"subtopic_report"</span>,</span>
+<span id="cb2-8"><a href=""></a>                verbose<span class="op">=</span>verbose,</span>
+<span id="cb2-9"><a href=""></a>                source<span class="op">=</span>source,</span>
+<span id="cb2-10"><a href=""></a>                tone<span class="op">=</span><span class="va">self</span>.tone,</span>
+<span id="cb2-11"><a href=""></a>                headers<span class="op">=</span><span class="va">None</span>,</span>
+<span id="cb2-12"><a href=""></a>            )</span>
+<span id="cb2-13"><a href=""></a>        <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb2-14"><a href=""></a>            logger.error(<span class="ss">f"Error in researching topic </span><span class="sc">{</span>subtopic<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>e<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb2-15"><a href=""></a>            report <span class="op">=</span> <span class="st">""</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section id="arize-phoenix" class="slide level2">
+<h2>Arize Phoenix</h2>
+<p>Запустить:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode numberSource bash number-lines code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><a href=""></a><span class="ex">phoenix</span> serve</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Трейсить:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href=""></a><span class="im">from</span> openinference.instrumentation.langchain <span class="im">import</span> LangChainInstrumentor</span>
+<span id="cb4-2"><a href=""></a><span class="im">from</span> phoenix.otel <span class="im">import</span> register</span>
+<span id="cb4-3"><a href=""></a></span>
+<span id="cb4-4"><a href=""></a>tracer_provider <span class="op">=</span> register(</span>
+<span id="cb4-5"><a href=""></a>  project_name<span class="op">=</span><span class="st">"gpt-researcher"</span>,</span>
+<span id="cb4-6"><a href=""></a>  endpoint<span class="op">=</span><span class="st">"http://localhost:6006/v1/traces"</span>,</span>
+<span id="cb4-7"><a href=""></a>)</span>
+<span id="cb4-8"><a href=""></a></span>
+<span id="cb4-9"><a href=""></a>LangChainInstrumentor().instrument(tracer_provider<span class="op">=</span>tracer_provider)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</section>
+<section class="slide level2">
+
+<h3 id="найти-эксперта-в-предметной-области">Найти эксперта в предметной области</h3>
+<ul>
+<li>Он устанавливает стандарт</li>
+<li>Учитываются невысказанные ожидания</li>
+<li>Последовательность в суждениях</li>
+<li>Чувство сопричастности</li>
+</ul>
+</section>
+<section id="датасет" class="slide level2">
+<h2>Датасет</h2>
+<ul>
+<li>Комплексное тестирование</li>
+<li>Реалистичное взаимодействие</li>
+<li>Выявляет слабые стороны</li>
+</ul>
+<h3 id="как-структурировать">Как структурировать</h3>
+<ul>
+<li>Дать составить эксперту</li>
+<li>Использовать существующие данные</li>
+<li>Генерировать синтетические данные</li>
+</ul>
+</section>
+<section class="slide level2">
+
+<h3 id="сделать-annotation-tool">Сделать annotation tool</h3>
+<div class="columns">
+<div class="column" style="width:60%;">
+<ul>
+<li>весь контекст в одном месте</li>
+<li>простое получение ОС</li>
+<li>открытый фидбэк</li>
+<li>фильтрация и сортировка</li>
+<li>горячие главиши</li>
+<li>фреймворки: Gradio, Panel, Streamlit, Shiny For Python</li>
+<li>лучше начать с электронной таблицы, чем с ничего!</li>
+</ul>
+</div><div class="column" style="width:40%;">
+<p><img data-src="evals-presentation_files/figure-revealjs/eb9ec873-6770-436e-a1de-430fb05925f3-3-image-4.png"></p>
+</div></div>
+</section>
+<section id="частые-ошибки" class="slide level2">
+<h2>Частые ошибки</h2>
+<ul>
+<li>Слишком много показателей (разрозненное внимание)</li>
+<li>Произвольные системы оценки (от 1 до 5)</li>
+<li>Игнорирование экспертов в предметной области</li>
+<li>Непроверенные показатели (полнота ответа. тормозят процесс, ложное ощущение прогресса)</li>
+<li>Пропуск анализа ошибок</li>
+</ul>
+</section>
+<section class="slide level2">
+
+</section>
+<section class="slide level2">
+
+<div class="sourceCode" id="cb5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href=""></a><span class="cf">async</span> <span class="kw">def</span> update_report(<span class="va">self</span>, layout: <span class="bu">str</span>, research_state: <span class="bu">dict</span>) <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb5-2"><a href=""></a>        <span class="cf">try</span>:</span>
+<span id="cb5-3"><a href=""></a>            task <span class="op">=</span> research_state.get(<span class="st">"task"</span>)</span>
+<span id="cb5-4"><a href=""></a>            report_update_prompt <span class="op">=</span> [</span>
+<span id="cb5-5"><a href=""></a>                {</span>
+<span id="cb5-6"><a href=""></a>                    <span class="st">"role"</span>: <span class="st">"system"</span>,</span>
+<span id="cb5-7"><a href=""></a>                    <span class="st">"content"</span>: <span class="st">"""На основе предоставленного отчета выполни реструктуризацию текста, строго соблюдая следующие требования:  </span></span>
+<span id="cb5-8"><a href=""></a></span>
+<span id="cb5-9"><a href=""></a><span class="st">1. **Сохранение структуры:**</span></span>
+<span id="cb5-10"><a href=""></a><span class="st">   - Полностью сохрани исходную структуру отчета (секции, подсекции, заголовки), **если они не дублируют друг друга**.  </span></span>
+<span id="cb5-11"><a href=""></a><span class="st">   - Никогда не удаляй разделы **"Содержание", "Введение", "Заключение"** — они обязательны.</span></span>
+<span id="cb5-12"><a href=""></a><span class="st">   - Сохраняй все ссылки на все источники точь-в-точь, как они были в первоначальном тексте, важно не терять источники!</span></span>
+<span id="cb5-13"><a href=""></a></span>
+<span id="cb5-14"><a href=""></a><span class="st">2. **Устранение повторов:**</span></span>
+<span id="cb5-15"><a href=""></a><span class="st">   - Исключи все дубли информации между разделами. Каждая мысль, факт или тезис должны быть представлены **только один раз** в наиболее подходящей секции.  </span></span>
+<span id="cb5-16"><a href=""></a></span>
+<span id="cb5-17"><a href=""></a><span class="st">3. **Точность данных:**</span></span>
+<span id="cb5-18"><a href=""></a><span class="st">   - Сохрани все **критически важные данные, цифры, факты и выводы** без изменений.  </span></span>
+<span id="cb5-19"><a href=""></a><span class="st">   - Не искажай смысл исходной информации.</span></span>
+<span id="cb5-20"><a href=""></a></span>
+<span id="cb5-21"><a href=""></a><span class="st">4. **Сохранение источников:**</span></span>
+<span id="cb5-22"><a href=""></a><span class="st">   - Не удаляй ни один источник — все **ссылки** должны остаться в тексте.</span></span>
+<span id="cb5-23"><a href=""></a></span>
+<span id="cb5-24"><a href=""></a><span class="st">5. **Логика и связность:**</span></span>
+<span id="cb5-25"><a href=""></a><span class="st">   - Оптимизируй повествование так, чтобы информация излагалась **последовательно и без разрывов**, но с устранением дублирования.  </span></span>
+<span id="cb5-26"><a href=""></a><span class="st">   - Следи за плавностью переходов между разделами.</span></span>
+<span id="cb5-27"><a href=""></a></span>
+<span id="cb5-28"><a href=""></a><span class="st">6. **Грамматика и стиль:**</span></span>
+<span id="cb5-29"><a href=""></a><span class="st">   - Исправь все **грамматические, пунктуационные и стилистические ошибки**.</span></span>
+<span id="cb5-30"><a href=""></a></span>
+<span id="cb5-31"><a href=""></a><span class="st">7. **Удаление лишних пометок:**</span></span>
+<span id="cb5-32"><a href=""></a><span class="st">   - Удали **заметки, примечания или мета-комментарии** (например, указания на отсутствие повторов, технические пометки для редактора и т. д.), если они не несут смысловой нагрузки.</span></span>
+<span id="cb5-33"><a href=""></a><span class="st">   - При этом **не удаляй ссылки на источники** - они важны!</span></span>
+<span id="cb5-34"><a href=""></a></span>
+<span id="cb5-35"><a href=""></a><span class="st">**Особое внимание удели:**</span></span>
+<span id="cb5-36"><a href=""></a><span class="st">- Пересекающимся тезисам в разных разделах.</span></span>
+<span id="cb5-37"><a href=""></a><span class="st">- Повторяющимся определениям терминов или концепций.</span></span>
+<span id="cb5-38"><a href=""></a><span class="st">- Однотипным примерам, которые иллюстрируют один и тот же аргумент.</span></span>
+<span id="cb5-39"><a href=""></a><span class="st">- Источники важно сохранить. Конструкции вида [in-text citation](url) обязательно нужно оставлять!</span></span>
+<span id="cb5-40"><a href=""></a></span>
+<span id="cb5-41"><a href=""></a><span class="st">**Результат должен быть:**</span></span>
+<span id="cb5-42"><a href=""></a><span class="st">- Полноценным, без потерь важной информации.</span></span>
+<span id="cb5-43"><a href=""></a><span class="st">- Логично структурированным, без дублирования.</span></span>
+<span id="cb5-44"><a href=""></a><span class="st">- Грамматически безупречным и стилистически выверенным."""</span>,</span>
+<span id="cb5-45"><a href=""></a>                },</span>
+<span id="cb5-46"><a href=""></a>                {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: layout},</span>
+<span id="cb5-47"><a href=""></a>            ]</span>
+<span id="cb5-48"><a href=""></a>            report <span class="op">=</span> <span class="cf">await</span> call_model(</span>
+<span id="cb5-49"><a href=""></a>                report_update_prompt,</span>
+<span id="cb5-50"><a href=""></a>                task.get(<span class="st">"model"</span>),</span>
+<span id="cb5-51"><a href=""></a>            )</span>
+<span id="cb5-52"><a href=""></a></span>
+<span id="cb5-53"><a href=""></a>        <span class="cf">except</span> <span class="pp">Exception</span> <span class="im">as</span> e:</span>
+<span id="cb5-54"><a href=""></a>            logger.error(<span class="ss">f"Error in generate_report: </span><span class="sc">{</span>e<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-55"><a href=""></a>            report <span class="op">=</span> layout</span>
+<span id="cb5-56"><a href=""></a>        references <span class="op">=</span> <span class="st">"</span><span class="ch">\n</span><span class="st">"</span>.join(</span>
+<span id="cb5-57"><a href=""></a>            <span class="ss">f"</span><span class="sc">{</span>reference<span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> reference <span class="kw">in</span> research_state.get(<span class="st">"sources"</span>, [])</span>
+<span id="cb5-58"><a href=""></a>        )</span>
+<span id="cb5-59"><a href=""></a>        headers <span class="op">=</span> research_state.get(<span class="st">"headers"</span>, {})</span>
+<span id="cb5-60"><a href=""></a>        report <span class="op">+=</span> <span class="ss">f"""</span><span class="ch">\n\n</span><span class="ss">## </span><span class="sc">{</span>headers<span class="sc">.</span>get(<span class="st">"references"</span>)<span class="sc">}</span></span>
+<span id="cb5-61"><a href=""></a><span class="sc">{</span>references<span class="sc">}</span><span class="ss">"""</span></span>
+<span id="cb5-62"><a href=""></a>        <span class="cf">return</span> report</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </section>
 <section class="slide level2">
 
